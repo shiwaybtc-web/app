@@ -1,25 +1,29 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { AmbientAudio } from './AmbientAudio'
-import { siteConfig } from '@/config/site'
+import { assets } from '@/config/assets'
+import { useGame } from '@/game/store'
 
+/** Follows the "son" setting: enables / disables the ambient layers. */
 export function useAmbientAudio() {
+  const son = useGame((s) => s.save?.reglages.son ?? false)
   const ref = useRef<AmbientAudio | null>(null)
-  const [enabled, setEnabled] = useState(false)
-
   useEffect(() => {
     ref.current = new AmbientAudio(
-      siteConfig.sound.layers.map((l) => ({ ...l })),
-      siteConfig.sound.masterVolume,
-      siteConfig.sound.fadeMs,
+      [
+        { id: 'eau', src: assets.audio.eau, volume: 0.5 },
+        { id: 'vent', src: assets.audio.vent, volume: 0.35 },
+        { id: 'foret', src: assets.audio.foret, volume: 0.4 },
+        { id: 'musique', src: assets.audio.musique, volume: 0.6 },
+      ],
+      0.8,
+      1400,
     )
     return () => ref.current?.destroy()
   }, [])
-
-  const toggle = useCallback(() => {
-    const audio = ref.current
-    if (!audio) return
-    setEnabled(audio.toggle())
-  }, [])
-
-  return { enabled, toggle, hasSources: ref.current?.hasSources ?? false }
+  useEffect(() => {
+    const a = ref.current
+    if (!a) return
+    if (son && !a.isEnabled) void a.enable()
+    if (!son && a.isEnabled) a.disable()
+  }, [son])
 }

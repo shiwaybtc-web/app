@@ -1,11 +1,13 @@
-import type { AmbientLayer } from '@/config/site'
+export type AmbientLayer = {
+  id: 'eau' | 'vent' | 'foret' | 'musique'
+  src: string
+  volume: number
+}
 
 /**
- * Ambient sound architecture.
- *
- * Each layer (water, wind, forest, music) is an independent looping
+ * Ambient sound architecture. Each layer is an independent looping
  * HTMLAudioElement with its own target volume. Nothing is created or played
- * until the user explicitly enables sound, and every change fades smoothly.
+ * until the player explicitly enables sound; every change fades.
  */
 export class AmbientAudio {
   private elements = new Map<string, HTMLAudioElement>()
@@ -22,7 +24,6 @@ export class AmbientAudio {
     return this.enabled
   }
 
-  /** True when at least one layer has an audio source configured. */
   get hasSources() {
     return this.layers.some((l) => !!l.src)
   }
@@ -48,9 +49,8 @@ export class AmbientAudio {
       const p = Math.min(1, (now - t0) / this.fadeMs)
       const eased = 1 - Math.pow(1 - p, 3)
       el.volume = start + (target - start) * eased
-      if (p < 1) {
-        this.fades.set(id, requestAnimationFrame(tick))
-      } else {
+      if (p < 1) this.fades.set(id, requestAnimationFrame(tick))
+      else {
         this.fades.delete(id)
         onDone?.()
       }
@@ -58,7 +58,7 @@ export class AmbientAudio {
     this.fades.set(id, requestAnimationFrame(tick))
   }
 
-  /** Must be called from a user gesture the first time. */
+  /** Call from a user gesture the first time. */
   async enable() {
     this.enabled = true
     for (const layer of this.layers) {
@@ -68,25 +68,16 @@ export class AmbientAudio {
         await el.play()
         this.fadeTo(layer.id, el, layer.volume * this.masterVolume)
       } catch {
-        // Autoplay policy or missing file: stay silent, keep state consistent.
+        // Autoplay policy or missing file: stay silent.
       }
     }
   }
 
   disable() {
     this.enabled = false
-    for (const [id, el] of this.elements) {
-      this.fadeTo(id, el, 0, () => el.pause())
-    }
+    for (const [id, el] of this.elements) this.fadeTo(id, el, 0, () => el.pause())
   }
 
-  toggle() {
-    if (this.enabled) this.disable()
-    else void this.enable()
-    return this.enabled
-  }
-
-  /** Adjust one layer live (e.g. more wind during a storm event). */
   setLayerVolume(id: AmbientLayer['id'], volume: number) {
     const layer = this.layers.find((l) => l.id === id)
     if (!layer) return

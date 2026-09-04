@@ -1,82 +1,61 @@
-import { useCallback, useRef, useState } from 'react'
-import { useScroll } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import { useGame } from '@/game/store'
+import { SceneProvider } from '@/world/SceneContext'
+import { IntroScreen } from '@/screens/IntroScreen'
+import { HomeScreen } from '@/screens/HomeScreen'
 import { Cursor } from '@/components/Cursor'
-import { VideoBackground } from '@/components/VideoBackground'
-import { ParticleLayer } from '@/components/ParticleLayer'
-import { IntroScreen } from '@/components/IntroScreen'
-import { Navbar } from '@/components/Navbar'
-import { HeroCenter } from '@/components/HeroCenter'
-import { ScrollHint } from '@/components/ScrollHint'
-import { SoundToggle } from '@/components/SoundToggle'
-import { AwakenOverlay } from '@/components/AwakenOverlay'
-import { WorldAlive } from '@/sections/WorldAlive'
-import { CreatureTeaser } from '@/sections/CreatureTeaser'
-import { MapPreview } from '@/sections/MapPreview'
-import { Footer } from '@/sections/Footer'
-import { useLenis } from '@/hooks/useLenis'
-import { useReducedMotion } from '@/hooks/useReducedMotion'
+import { DevPanel } from '@/dev/DevPanel'
+import { t } from '@/config/texts'
 import { useAmbientAudio } from '@/audio/useAmbientAudio'
-import { cn } from '@/lib/cn'
 
 export default function App() {
-  const [entered, setEntered] = useState(false)
-  const [awakening, setAwakening] = useState(false)
-  const reduced = useReducedMotion()
-  const heroRef = useRef<HTMLElement>(null)
+  const pret = useGame((s) => s.ui.pret)
+  const ecran = useGame((s) => s.ui.ecran)
+  const charger = useGame((s) => s.charger)
+  const entrer = useGame((s) => s.entrerDansLeJeu)
+  const marquerIntroVue = useGame((s) => s.marquerIntroVue)
+  const [arrivee, setArrivee] = useState(false)
+  useAmbientAudio()
 
-  // Hero scroll progress drives the background shade and the scroll hint.
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
+  useEffect(() => {
+    void charger()
+  }, [charger])
 
-  useLenis(entered && !reduced)
-  const audio = useAmbientAudio()
+  // Persist on tab hide as a safety net.
+  useEffect(() => {
+    const onHide = () => document.visibilityState === 'hidden' && void useGame.getState().sauvegarderMaintenant()
+    document.addEventListener('visibilitychange', onHide)
+    return () => document.removeEventListener('visibilitychange', onHide)
+  }, [])
 
-  const handleEnter = useCallback(() => setEntered(true), [])
-  const openAwaken = useCallback(() => setAwakening(true), [])
-  const closeAwaken = useCallback(() => setAwakening(false), [])
+  if (!pret) {
+    return (
+      <div className="flex h-[100svh] items-center justify-center bg-night-950">
+        <span className="font-sans text-[0.62rem] uppercase tracking-[0.36em] text-white/40">{t.intro.chargement}</span>
+      </div>
+    )
+  }
 
   return (
-    <>
+    <SceneProvider>
       <Cursor />
-      <VideoBackground entered={entered} scrollProgress={scrollYProgress} />
-      <ParticleLayer active={entered} />
-
-      <IntroScreen onEnter={handleEnter} />
-
-      <div
-        id="top"
-        className={cn(
-          'relative z-10 transition-opacity duration-[1200ms] ease-premium',
-          entered ? 'opacity-100' : 'pointer-events-none opacity-0',
-        )}
-        aria-hidden={!entered}
-      >
-        {entered && <Navbar />}
-
-        <section ref={heroRef} className="relative h-[100svh] min-h-[560px]">
-          {entered && (
-            <>
-              <HeroCenter onAwaken={openAwaken} />
-              <ScrollHint progress={scrollYProgress} />
-            </>
+      <div className="relative h-[100svh] w-full overflow-hidden bg-night-950">
+        {ecran === 'jeu' && <HomeScreen arrivee={arrivee} />}
+        <AnimatePresence>
+          {ecran === 'intro' && (
+            <IntroScreen
+              key="intro"
+              onEnter={() => {
+                setArrivee(true)
+                marquerIntroVue()
+                entrer()
+              }}
+            />
           )}
-        </section>
-
-        <div
-          className="relative"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(4,6,15,0) 0%, rgba(4,6,15,0.55) 12%, rgba(4,6,15,0.82) 30%, rgba(4,6,15,0.9) 100%)',
-          }}
-        >
-          <WorldAlive />
-          <CreatureTeaser />
-          <MapPreview />
-          <Footer />
-        </div>
+        </AnimatePresence>
       </div>
-
-      <SoundToggle enabled={audio.enabled} onToggle={audio.toggle} visible={entered} />
-      <AwakenOverlay open={awakening} onClose={closeAwaken} />
-    </>
+      <DevPanel />
+    </SceneProvider>
   )
 }

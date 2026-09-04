@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import { cn } from '@/lib/cn'
-import { siteConfig } from '@/config/site'
+import { t } from '@/config/texts'
 
 type LogoProps = {
   variant?: 'hero' | 'small'
@@ -8,30 +8,21 @@ type LogoProps = {
   className?: string
 }
 
-/**
- * The NEXA wordmark. Letters are wrapped individually so the intro screen
- * can sample them into particles.
- */
-export const Logo = forwardRef<HTMLSpanElement, LogoProps>(function Logo(
-  { variant = 'small', shimmer = true, className },
-  ref,
-) {
-  const letters = siteConfig.brand.name.split('')
+/** The NEXA wordmark. */
+export const Logo = forwardRef<HTMLSpanElement, LogoProps>(function Logo({ variant = 'small', shimmer = true, className }, ref) {
   return (
     <span
       ref={ref}
-      aria-label={siteConfig.brand.name}
+      aria-label={t.marque}
       className={cn(
         'logo-wordmark inline-block select-none leading-none',
         shimmer && 'logo-wordmark--shimmer',
-        variant === 'hero'
-          ? 'text-[clamp(3.6rem,15vw,11rem)] tracking-[0.34em] sm:tracking-ultra'
-          : 'text-[1.05rem] tracking-[0.34em]',
+        variant === 'hero' ? 'text-[clamp(3.4rem,14vw,10rem)] tracking-[0.34em] sm:tracking-ultra' : 'text-[0.95rem] tracking-[0.34em]',
         className,
       )}
     >
-      {letters.map((l, i) => (
-        <span key={i} data-letter={l} className="inline-block">
+      {t.marque.split('').map((l, i) => (
+        <span key={i} className="inline-block">
           {l}
         </span>
       ))}
